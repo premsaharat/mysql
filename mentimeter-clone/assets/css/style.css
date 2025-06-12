@@ -1,0 +1,41 @@
+/* assets/css/style.css */
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --success-color: #42b883;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    --info-color: #3498db;
+}
+
+body {
+    font-family: 'Prompt', sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.alert {
+    margin: 1rem;
+}
+
+.btn {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}

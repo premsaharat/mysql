@@ -1,0 +1,36 @@
+/* assets/css/presentation.css */
+.mobile-preview {
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    padding: 10px;
+    background: #fff;
+}
+
+.mobile-frame {
+    max-width: 300px;
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.mobile-content {
+    min-height: 400px;
+    background: #f8f9fa;
+    padding: 15px;
+}
+
+.question-preview h5 {
+    font-size: 1.2rem;
+}
+
+.list-group-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .mobile-preview {
+        max-width: 100%;
+    }
+}
