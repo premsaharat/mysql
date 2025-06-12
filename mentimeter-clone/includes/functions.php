@@ -74,21 +74,31 @@ function getUserData($userId) {
 }
 
 // ฟังก์ชันดึง sessions ของ user
-function getUserSessions($userId) {
+
+function getUserSessions($user_id) {
     $conn = getDBConnection();
-    $stmt = $conn->prepare("
-        SELECT s.*, 
-               COUNT(DISTINCT p.participantid) as participant_count,
-               COUNT(DISTINCT sl.slideid) as slide_count
-        FROM tbsession s 
-        LEFT JOIN tbparticipant p ON s.sessionid = p.sessionid
-        LEFT JOIN tbslide sl ON s.sessionid = sl.sessionid
-        WHERE s.created_by = ? 
-        GROUP BY s.sessionid
-        ORDER BY s.created_at DESC
-    ");
-    $stmt->execute([$userId]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $conn->prepare("
+            SELECT 
+                sess.sessionid AS id, 
+                sess.session_name AS title, 
+                sess.created_at, 
+                sess.status, 
+                sess.join_code,
+                COALESCE(COUNT(r.responseid), 0) AS responses
+            FROM tbsession sess
+            LEFT JOIN tbslide s ON sess.sessionid = s.sessionid
+            LEFT JOIN tbresponse r ON s.slideid = r.slideid
+            WHERE sess.created_by = ?
+            GROUP BY sess.sessionid, sess.session_name, sess.created_at, sess.status, sess.join_code
+            ORDER BY sess.created_at DESC
+        ");
+        $stmt->execute([$user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("getUserSessions error: " . $e->getMessage());
+        return [];
+    }
 }
 
 // ฟังก์ชันดึงเทมเพลต
@@ -97,5 +107,40 @@ function getTemplates() {
     $stmt = $conn->prepare("SELECT * FROM tbtemplate WHERE is_public = 1 ORDER BY usage_count DESC, created_at DESC");
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ฟังก์ชันดึงข้อมูล session ตาม ID
+function getSessionData($session_id) {
+    try {
+        $conn = getDBConnection();
+        $stmt = $conn->prepare("
+            SELECT sessionid, session_name, description, join_code, created_by, is_public, max_participants, status
+            FROM tbsession
+            WHERE sessionid = ? AND status != 'deleted'
+        ");
+        $stmt->execute([$session_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Get session data error: " . $e->getMessage());
+        return null;
+    }
+}
+
+// ฟังก์ชันดึง slides ของ session
+function getSlides($session_id) {
+    try {
+        $conn = getDBConnection();
+        $stmt = $conn->prepare("
+            SELECT slideid, sessionid, slide_title, slide_type, question_text, background_image
+            FROM tbslide
+            WHERE sessionid = ?
+            ORDER BY slideid
+        ");
+        $stmt->execute([$session_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Get slides error: " . $e->getMessage());
+        return [];
+    }
 }
 ?>

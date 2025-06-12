@@ -1,4 +1,3 @@
-// Dashboard JavaScript - Mentimeter Clone
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
 });
@@ -23,24 +22,23 @@ function initializeSearch() {
     searchInput.addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase().trim();
         
-        // Clear previous timeout
         clearTimeout(searchTimeout);
         
         if (searchTerm === '') {
             hideSearchResults();
+            resetSessionDisplay();
             return;
         }
 
-        // Debounce search
         searchTimeout = setTimeout(() => {
             performSearch(searchTerm);
         }, 300);
     });
 
-    // Hide search results when clicking outside
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.search-box')) {
             hideSearchResults();
+            resetSessionDisplay();
         }
     });
 
@@ -55,19 +53,22 @@ function initializeSearch() {
     }
 
     function performSearch(searchTerm) {
-        // Show loading
         searchResults.innerHTML = '<div class="search-loading"><i class="fas fa-spinner fa-spin"></i> กำลังค้นหา...</div>';
         searchResults.style.display = 'block';
 
-        // Search in sessions
         const sessionCards = document.querySelectorAll('.session-card');
         const featureCards = document.querySelectorAll('.feature-card');
         const results = [];
 
+        // Hide all sessions
+        sessionCards.forEach(card => card.style.display = 'none');
+
         // Search sessions
         sessionCards.forEach(card => {
             const title = card.querySelector('.session-title')?.textContent.toLowerCase();
-            if (title && title.includes(searchTerm)) {
+            const joinCode = card.querySelector('.join-code')?.textContent.toLowerCase();
+            if ((title && title.includes(searchTerm)) || (joinCode && joinCode.includes(searchTerm))) {
+                card.style.display = '';
                 results.push({
                     type: 'session',
                     title: card.querySelector('.session-title').textContent,
@@ -114,7 +115,7 @@ function initializeSearch() {
             html += '<div class="search-category">Sessions</div>';
             sessionResults.forEach(result => {
                 html += `
-                    <div class="search-result-item" onclick="scrollToElement(this, '${result.element.id || ''}')">
+                    <div class="search-result-item" onclick="scrollToSession(this, '${result.element.dataset.sessionId || ''}')">
                         <i class="fas fa-presentation"></i>
                         <div>
                             <div class="search-result-title">${highlightSearchTerm(result.title, searchTerm)}</div>
@@ -143,6 +144,12 @@ function initializeSearch() {
         searchResults.innerHTML = html;
     }
 
+    function resetSessionDisplay() {
+        document.querySelectorAll('.session-card').forEach(card => {
+            card.style.display = '';
+        });
+    }
+
     function highlightSearchTerm(text, searchTerm) {
         const regex = new RegExp(`(${searchTerm})`, 'gi');
         return text.replace(regex, '<mark>$1</mark>');
@@ -158,7 +165,6 @@ function initializeSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const mainContent = document.querySelector('.main-content');
     
-    // Mobile menu toggle button
     if (!document.querySelector('.mobile-menu-toggle')) {
         const toggleButton = document.createElement('button');
         toggleButton.className = 'mobile-menu-toggle d-md-none';
@@ -167,7 +173,6 @@ function initializeSidebar() {
         document.querySelector('.top-navbar').prepend(toggleButton);
     }
 
-    // Close sidebar when clicking outside on mobile
     document.addEventListener('click', function(e) {
         if (window.innerWidth < 768 && 
             !e.target.closest('.sidebar') && 
@@ -176,7 +181,6 @@ function initializeSidebar() {
         }
     });
 
-    // Handle window resize
     window.addEventListener('resize', function() {
         if (window.innerWidth >= 768) {
             closeSidebar();
@@ -223,19 +227,16 @@ function getOrCreateOverlay() {
 
 // Session cards functionality
 function initializeSessionCards() {
-    // Add hover effects and animations
     const sessionCards = document.querySelectorAll('.session-card');
     
     sessionCards.forEach(card => {
-        // Add click-to-expand functionality
+        card.dataset.sessionId = card.querySelector('a[href*="edit_slide.php"]')?.href.match(/id=(\d+)/)?.[1] || card.dataset.sessionId;
+        
         card.addEventListener('click', function(e) {
-            // Don't trigger if clicking on dropdown
-            if (e.target.closest('.dropdown')) return;
-            
+            if (e.target.closest('.dropdown') || e.target.closest('.copy-code') || e.target.closest('a')) return;
             expandSessionCard(card);
         });
 
-        // Add status update functionality
         const statusBadge = card.querySelector('.badge');
         if (statusBadge) {
             statusBadge.addEventListener('click', function(e) {
@@ -247,7 +248,6 @@ function initializeSessionCards() {
 }
 
 function expandSessionCard(card) {
-    // Remove any existing expanded cards
     document.querySelectorAll('.session-card.expanded').forEach(c => {
         if (c !== card) c.classList.remove('expanded');
     });
@@ -260,11 +260,9 @@ function expandSessionCard(card) {
 }
 
 function loadSessionDetails(card) {
-    // Check if details already loaded
     let detailsContainer = card.querySelector('.session-details');
     if (detailsContainer) return;
     
-    // Create details container
     detailsContainer = document.createElement('div');
     detailsContainer.className = 'session-details';
     detailsContainer.innerHTML = `
@@ -275,51 +273,78 @@ function loadSessionDetails(card) {
     
     card.appendChild(detailsContainer);
     
-    // Simulate loading session details
-    setTimeout(() => {
-        detailsContainer.innerHTML = `
-            <div class="session-stats">
-                <div class="stat-item">
-                    <i class="fas fa-eye"></i>
-                    <span>Views: 245</span>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-clock"></i>
-                    <span>Duration: 15 min</span>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-question"></i>
-                    <span>Questions: 5</span>
-                </div>
-            </div>
-            <div class="session-actions">
-                <button class="btn btn-sm btn-primary" onclick="presentSession(this)">
-                    <i class="fas fa-play"></i> Present
-                </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="duplicateSession(this)">
-                    <i class="fas fa-copy"></i> Duplicate
-                </button>
-            </div>
-        `;
-    }, 500);
+    const sessionId = card.dataset.sessionId;
+    const joinCode = card.querySelector('.join-code')?.textContent.match(/Code: (\w+)/)?.[1] || '';
+    if (sessionId) {
+        fetch(`api/get_session_details.php?id=${sessionId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    detailsContainer.innerHTML = `
+                        <div class="session-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-eye"></i>
+                                <span>Views: ${data.views || 0}</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-clock"></i>
+                                <span>Duration: ${data.duration || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-question"></i>
+                                <span>Questions: ${data.question_count || 0}</span>
+                            </div>
+                        </div>
+                        <div class="session-actions">
+                            <button class="btn btn-sm btn-primary" onclick="presentSession(this)">
+                                <i class="fas fa-play"></i> Present
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="duplicateSession(this)">
+                                <i class="fas fa-copy"></i> Duplicate
+                            </button>
+                            <a class="btn btn-sm btn-outline-primary" href="join.php?code=${encodeURIComponent(joinCode)}">
+                                <i class="fas fa-sign-in-alt"></i> Join
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    detailsContainer.innerHTML = '<div class="error">ไม่สามารถโหลดข้อมูลได้</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching session details:', error);
+                detailsContainer.innerHTML = '<div class="error">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+            });
+    } else {
+        detailsContainer.innerHTML = '<div class="error">ไม่พบ Session ID</div>';
+    }
 }
 
 function toggleSessionStatus(card) {
     const badge = card.querySelector('.badge');
+    const sessionId = card.dataset.sessionId;
     const currentStatus = badge.textContent.trim();
-    
-    if (currentStatus === 'active') {
-        badge.textContent = 'inactive';
-        badge.className = 'badge bg-secondary';
-        showNotification('Session deactivated', 'info');
-    } else {
-        badge.textContent = 'active';
-        badge.className = 'badge bg-success';
-        showNotification('Session activated', 'success');
-    }
-    
-    // Here you would typically make an API call to update the status
-    // updateSessionStatus(sessionId, newStatus);
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+    fetch('api/update_session_status.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, status: newStatus })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                badge.textContent = newStatus;
+                badge.className = `badge bg-${newStatus === 'active' ? 'success' : 'secondary'}`;
+                showNotification(`Session ${newStatus === 'active' ? 'activated' : 'deactivated'}`, 'success');
+            } else {
+                showNotification('Failed to update session status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating session status:', error);
+            showNotification('Error updating session status', 'error');
+        });
 }
 
 // Stats refresh functionality
@@ -327,60 +352,42 @@ function initializeStatsRefresh() {
     const statCards = document.querySelectorAll('.stat-card');
     
     statCards.forEach(card => {
-        card.addEventListener('click', function() {
-            refreshStats();
-        });
+        card.addEventListener('click', refreshStats);
     });
     
-    // Auto-refresh stats every 30 seconds
     setInterval(refreshStats, 30000);
 }
 
 function refreshStats() {
     const statNumbers = document.querySelectorAll('.stat-number');
     
-    statNumbers.forEach(stat => {
-        stat.classList.add('updating');
-        const currentValue = parseInt(stat.textContent);
-        
-        // Simulate stats update with animation
-        animateNumber(stat, currentValue, currentValue + Math.floor(Math.random() * 3));
-    });
-    
-    setTimeout(() => {
-        statNumbers.forEach(stat => stat.classList.remove('updating'));
-    }, 1000);
-}
-
-function animateNumber(element, start, end) {
-    const duration = 800;
-    const startTime = performance.now();
-    
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        const current = Math.floor(start + (end - start) * progress);
-        element.textContent = current;
-        
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        }
-    }
-    
-    requestAnimationFrame(update);
+    fetch('api/get_dashboard_stats.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statNumbers[0].textContent = data.total_sessions || 0;
+                statNumbers[1].textContent = data.total_responses || 0;
+                statNumbers[2].textContent = data.active_sessions || 0;
+                
+                statNumbers.forEach(stat => {
+                    stat.classList.add('updating');
+                    setTimeout(() => stat.classList.remove('updating'), 1000);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing stats:', error);
+        });
 }
 
 // Question type creation functionality
 function createQuestion(type) {
-    // Add loading state
     const clickedCard = event.target.closest('.feature-card');
     if (clickedCard) {
         clickedCard.classList.add('loading');
         clickedCard.innerHTML += '<div class="card-loading"><i class="fas fa-spinner fa-spin"></i></div>';
     }
     
-    // Store selected question type in session storage
     try {
         sessionStorage.setItem('selectedQuestionType', type);
         sessionStorage.setItem('dashboardReturn', window.location.href);
@@ -388,22 +395,27 @@ function createQuestion(type) {
         console.warn('SessionStorage not available, using URL parameters');
     }
     
-    // Navigate to create question page
-    window.location.href = `create-question.php?type=${type}`;
+    setTimeout(() => {
+        window.location.href = `create_presentation.php?type=${type}`;
+        if (clickedCard) {
+            clickedCard.classList.remove('loading');
+            clickedCard.querySelector('.card-loading')?.remove();
+        }
+    }, 500);
 }
 
 // Utility functions
 function presentSession(button) {
     const card = button.closest('.session-card');
     const sessionTitle = card.querySelector('.session-title').textContent;
+    const sessionId = card.dataset.sessionId;
     
     if (confirm(`เริ่มการนำเสนอ "${sessionTitle}" หรือไม่?`)) {
-        // Add loading state
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังเริ่ม...';
         button.disabled = true;
         
         setTimeout(() => {
-            window.open(`present.php?session_id=${getSessionId(card)}`, '_blank');
+            window.open(`present.php?session_id=${sessionId}`, '_blank');
             button.innerHTML = '<i class="fas fa-play"></i> Present';
             button.disabled = false;
         }, 1000);
@@ -413,38 +425,43 @@ function presentSession(button) {
 function duplicateSession(button) {
     const card = button.closest('.session-card');
     const sessionTitle = card.querySelector('.session-title').textContent;
+    const sessionId = card.dataset.sessionId;
     
     if (confirm(`คัดลอก "${sessionTitle}" หรือไม่?`)) {
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังคัดลอก...';
         button.disabled = true;
         
-        // Simulate duplication
-        setTimeout(() => {
-            showNotification('Session duplicated successfully!', 'success');
-            button.innerHTML = '<i class="fas fa-copy"></i> Duplicate';
-            button.disabled = false;
-            
-            // Refresh the page to show the new session
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        }, 1000);
+        fetch('api/duplicate_session.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Session duplicated successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showNotification('Failed to duplicate session', 'error');
+                }
+                button.innerHTML = '<i class="fas fa-copy"></i> Duplicate';
+                button.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error duplicating session:', error);
+                showNotification('Error duplicating session', 'error');
+                button.innerHTML = '<i class="fas fa-copy"></i> Duplicate';
+                button.disabled = false;
+            });
     }
 }
 
 function getSessionId(card) {
-    // Extract session ID from card (this would depend on your HTML structure)
-    const editLink = card.querySelector('a[href*="edit-session.php"]');
-    if (editLink) {
-        const url = new URL(editLink.href);
-        return url.searchParams.get('id');
-    }
-    return null;
+    return card.dataset.sessionId;
 }
 
 // Notification system
 function initializeNotifications() {
-    // Create notification container if it doesn't exist
     if (!document.querySelector('.notification-container')) {
         const container = document.createElement('div');
         container.className = 'notification-container';
@@ -474,7 +491,6 @@ function showNotification(message, type = 'info') {
     
     container.appendChild(notification);
     
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (notification.parentElement) {
             notification.classList.add('fade-out');
@@ -483,47 +499,35 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Highlight feature card (for search results)
 function highlightFeatureCard(searchItem, title) {
     const featureCards = document.querySelectorAll('.feature-card');
     
-    // Remove previous highlights
     featureCards.forEach(card => card.classList.remove('highlighted'));
     
-    // Find and highlight the matching card
     featureCards.forEach(card => {
         const cardTitle = card.querySelector('h5').textContent;
         if (cardTitle === title) {
             card.classList.add('highlighted');
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-                card.classList.remove('highlighted');
-            }, 3000);
+            setTimeout(() => card.classList.remove('highlighted'), 3000);
         }
     });
     
-    // Hide search results
     document.querySelector('.search-results').style.display = 'none';
 }
 
-// Scroll to element (for search results)
-function scrollToElement(searchItem, elementId) {
-    if (elementId) {
-        const element = document.getElementById(elementId);
+function scrollToSession(searchItem, sessionId) {
+    if (sessionId) {
+        const element = document.querySelector(`.session-card[data-session-id="${sessionId}"]`);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
     
-    // Hide search results
     document.querySelector('.search-results').style.display = 'none';
 }
 
-// Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-    // Ctrl/Cmd + K for search
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         const searchInput = document.querySelector('.search-box input');
@@ -532,19 +536,18 @@ document.addEventListener('keydown', function(e) {
         }
     }
     
-    // Escape to close search results
     if (e.key === 'Escape') {
         const searchResults = document.querySelector('.search-results');
         if (searchResults && searchResults.style.display === 'block') {
             searchResults.style.display = 'none';
+            resetSessionDisplay();
         }
     }
 });
 
-// Export functions for global access
 window.createQuestion = createQuestion;
 window.toggleSidebar = toggleSidebar;
 window.presentSession = presentSession;
 window.duplicateSession = duplicateSession;
 window.highlightFeatureCard = highlightFeatureCard;
-window.scrollToElement = scrollToElement;
+window.scrollToSession = scrollToSession;

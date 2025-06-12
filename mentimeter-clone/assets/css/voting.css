@@ -1,0 +1,145 @@
+/* Voting page styles */
+.voting-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.voting-header {
+    margin-bottom: 30px;
+}
+
+.voting-header h1 {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.join-code {
+    font-size: 1.5rem;
+    color: #667eea;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.question-card {
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.question-text {
+    font-size: 1.8rem;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.option-btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    font-size: 1.2rem;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    background: #fff;
+    color: #667eea;
+    transition: all 0.3s ease;
+}
+
+.option-btn:hover {
+    background: #667eea;
+    color: #fff;
+}
+
+.option-btn.selected {
+    background: #667eea;
+    color: #fff;
+    border-color: #5a6ed8;
+}
+
+.submit-btn {
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    border-radius: 10px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    transition: background 0.3s ease;
+}
+
+.submit-btn:hover {
+    background: #218838;
+}
+
+.submit-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.wordcloud-input, .openended-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1.1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.scales-range {
+    width: 100%;
+    margin: 20px 0;
+}
+
+.pinimage-container {
+    position: relative;
+    max-width: 100%;
+    margin: 20px auto;
+}
+
+.pinimage-img {
+    max-width: 100%;
+    border-radius: 10px;
+}
+
+.pin-marker {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #ff0000;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: pointer;
+}
+
+.alert {
+    margin-top: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+    .voting-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .join-code {
+        font-size: 1.2rem;
+    }
+
+    .question-text {
+        font-size: 1.4rem;
+    }
+
+    .option-btn {
+        font-size: 1rem;
+        padding: 12px;
+    }
+
+    .submit-btn {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+}
